@@ -80,6 +80,23 @@ sudo apt install libosmesa6-dev libgl1-mesa-glx libglfw3
 
 Install dependencies:
 ```sh
+pip install torch torchvision torchaudio
+pip install dm-env
+pip install hydra-core
+pip install dm_control
+pip install termcolor
+pip install tensorboard
+pip install opencv-python
+pip install imageio[ffmpeg]
+pip install imageio[pyav]
+
+pip install wandb
+pip install gymnasium[classic_control]
+pip install gymnasium[atari]
+pip install gymnasium[accept-rom-license]
+pip install glfw
+pip install mujoco
+pip install torchinfo
 conda env create -f conda_env.yml
 conda activate drqv2
 ```
