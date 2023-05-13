@@ -46,10 +46,15 @@ class ReplayBufferStorage:
         return self._num_transitions
 
     def add(self, time_step):
+        print(self._data_specs[0].shape, "!!!!!!!!!!!!!!!!")
+        print(time_step[self._data_specs[0].name].shape)
+        print(self._data_specs[0].dtype, "!!!!!!!!!!!!!!!!")
+        print(time_step[self._data_specs[0].name].dtype)
         for spec in self._data_specs:
             value = time_step[spec.name]
             if np.isscalar(value):
                 value = np.full(spec.shape, value, spec.dtype)
+            print("@@@@@@@@@@@@@@@@@", spec.dtype, value.dtype)
             assert spec.shape == value.shape and spec.dtype == value.dtype
             self._current_episode[spec.name].append(value)
         if time_step.last():

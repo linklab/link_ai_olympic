@@ -3,6 +3,11 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import warnings
+
+from dm_control.suite.wrappers import action_scale
+
+from environments.ai_olympic_gym import AiOlympicGym
+
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 import os
@@ -56,11 +61,33 @@ class Workspace:
                                   self.cfg.action_repeat, self.cfg.seed)
         self.eval_env = dmc.make(self.cfg.task_name, self.cfg.frame_stack,
                                  self.cfg.action_repeat, self.cfg.seed)
+
+        env_config = {
+            "our_team_idx": 0,
+            "opponent_type": "static",  # "random"
+            "game_mode": "random",  # " running, table-hockey, football, wrestling, curling, billiard
+        }
+
+        self.train_env = AiOlympicGym(env_config)
+        self.eval_env = AiOlympicGym(env_config)
+
+        self.train_env = dmc.ActionDTypeWrapper(self.train_env, np.float32)
+        self.train_env = dmc.ActionRepeatWrapper(self.train_env, 1)
+        self.train_env = action_scale.Wrapper(self.train_env, minimum=0.0, maximum=+1.0)
+        # self.train_env = dmc.FrameStackWrapper(self.train_env, 1, 'pixels')
+        self.train_env = dmc.ExtendedTimeStepWrapper(self.train_env)
+
+        self.eval_env = dmc.ActionDTypeWrapper(self.eval_env, np.float32)
+        self.eval_env = dmc.ActionRepeatWrapper(self.eval_env, 1)
+        self.eval_env = action_scale.Wrapper(self.eval_env, minimum=0.0, maximum=+1.0)
+        # self.eval_env = dmc.FrameStackWrapper(self.eval_env, 1, 'pixels')
+        self.eval_env = dmc.ExtendedTimeStepWrapper(self.eval_env)
+
         # create replay buffer
         data_specs = (self.train_env.observation_spec(),
                       self.train_env.action_spec(),
-                      specs.Array((1,), np.float32, 'reward'),
-                      specs.Array((1,), np.float32, 'discount'))
+                      specs.Array(shape=(1,), dtype=np.float32, name='reward'),
+                      specs.Array(shape=(1,), dtype=np.float32, name='discount'))
 
         self.replay_storage = ReplayBufferStorage(data_specs,
                                                   self.work_dir / 'buffer')
@@ -156,6 +183,7 @@ class Workspace:
 
                 # reset env
                 time_step = self.train_env.reset()
+                print(time_step, "!!!!!!!!!!!!!!!!!reset")
                 self.replay_storage.add(time_step)
                 self.train_video_recorder.init(time_step.observation)
                 # try to save snapshot
@@ -204,7 +232,7 @@ class Workspace:
             self.__dict__[k] = v
 
 
-@hydra.main(config_path='cfgs', config_name='config', version_base="1.1")
+@hydra.main(config_path='cfgs', config_name='config')
 def main(cfg):
     from train import Workspace as W
     root_dir = Path.cwd()
