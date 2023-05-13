@@ -82,6 +82,8 @@ class AiOlympicGym(gym.Env):
                 "our_energy": self.entire_obs[self.our_team_idx]["energy"]
             }
 
+        if our_obs.dtype != 'float32':
+            our_obs = our_obs.astype(np.float32)
         # return our_obs, info
         return dm_env.restart(observation=our_obs)
 
@@ -103,6 +105,9 @@ class AiOlympicGym(gym.Env):
         self.entire_obs, self.entire_reward, terminated, game_info = self.game.step(action)
 
         our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], -1)
+        if our_obs.dtype != 'float32':
+            our_obs = our_obs.astype(np.float32)
+
         our_reward = self.entire_reward[self.our_team_idx]
 
         if game_info["reward"][self.our_team_idx] == 1.0:
@@ -133,7 +138,7 @@ class AiOlympicGym(gym.Env):
         truncated = False
 
         if our_obs.shape != (40, 40, 1):
-            our_obs = np.zeros(shape=(40, 40, 1), dtype=np.float64)
+            our_obs = np.zeros(shape=(40, 40, 1), dtype=np.float32)
 
         if terminated:
             return dm_env.termination(reward=our_reward, observation=our_obs)
@@ -160,7 +165,7 @@ class AiOlympicGym(gym.Env):
         """Returns the observation spec."""
         return specs.BoundedArray(
             shape=(40, 40, 1),
-            dtype=np.float64,
+            dtype=np.float32,
             name="observation",
             minimum=np.inf,
             maximum=np.inf,
@@ -170,7 +175,7 @@ class AiOlympicGym(gym.Env):
         """Returns the action spec."""
         return specs.BoundedArray(
             shape=(2,),
-            dtype=np.float64,
+            dtype=np.float32,
             name="action",
             minimum=0,
             maximum=1,
