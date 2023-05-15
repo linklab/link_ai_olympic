@@ -65,7 +65,7 @@ class Workspace:
         env_config = {
             "our_team_idx": 0,
             "opponent_type": "static",  # "random"
-            "game_mode": "random",  # " running, table-hockey, football, wrestling, curling, billiard
+            "game_mode": "billiard",  # " running, table-hockey, football, wrestling, curling, billiard
         }
 
         self.train_env = AiOlympicGym(env_config)
@@ -140,7 +140,7 @@ class Workspace:
                 step += 1
 
             episode += 1
-            self.video_recorder.save(f'{self.global_frame}.mp4')
+            # self.video_recorder.save(f'{self.global_frame}.mp4')
 
         with self.logger.log_and_dump_ctx(self.global_frame, ty='eval') as log:
             log('episode_reward', total_reward / episode)
@@ -183,7 +183,6 @@ class Workspace:
 
                 # reset env
                 time_step = self.train_env.reset()
-                print(time_step, "!!!!!!!!!!!!!!!!!reset")
                 self.replay_storage.add(time_step)
                 self.train_video_recorder.init(time_step.observation)
                 # try to save snapshot

@@ -5,6 +5,10 @@ from typing import Dict
 import os
 import sys
 
+from environments.olympics_engine.generator import create_scenario
+from environments.olympics_engine.scenario import Running_competition, table_hockey, football, wrestling, \
+    curling_competition, billiard_joint
+
 CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
 PROJECT_HOME = os.path.abspath(os.path.join(CURRENT_PATH, os.pardir, os.pardir))
 
@@ -24,6 +28,47 @@ from ray.rllib.env import EnvContext
 
 from environments.olympics_engine.AI_olympics import AI_Olympics
 from environments.olympics_engine.agent import random_agent, random_agent_2, static_agent
+
+
+def make_game_pool(game_mode):
+    max_step = 400
+    running_Gamemap = create_scenario("running-competition")
+    running_game = Running_competition(running_Gamemap, vis=200, vis_clear=5, agent1_color='light red',
+                                            agent2_color='blue')
+
+    tablehockey_game = table_hockey(create_scenario("table-hockey"))
+    football_game = football(create_scenario('football'))
+    wrestling_game = wrestling(create_scenario('wrestling'))
+    curling_game = curling_competition(create_scenario('curling-IJACA-competition'))
+    billiard_game = billiard_joint(create_scenario("billiard-joint"))
+
+    running_game.max_step = max_step
+    tablehockey_game.max_step = max_step
+    football_game.max_step = max_step
+    wrestling_game.max_step = max_step
+
+    # random, running, table-hockey, football, wrestling, curling, billiard
+    if game_mode == "running":
+        game_pool = [{"name": 'running-competition', 'game': running_game}]
+    elif game_mode == "table-hockey":
+        game_pool = [{"name": 'table-hockey', "game": tablehockey_game}]
+    elif game_mode == "football":
+        game_pool = [{"name": 'football', "game": football_game}]
+    elif game_mode == "wrestling":
+        game_pool = [{"name": 'wrestling', "game": wrestling_game}]
+    elif game_mode == "curling":
+        game_pool = [{"name": "curling", "game": curling_game}]
+    elif game_mode == "billiard":
+        game_pool = [{"name": "billiard", "game": billiard_game}]
+    else:
+        game_pool = [{"name": 'running-competition', 'game': running_game},
+                          {"name": 'table-hockey', "game": tablehockey_game},
+                          {"name": 'football', "game": football_game},
+                          {"name": 'wrestling', "game": wrestling_game},
+                          {"name": "curling", "game": curling_game},
+                          {"name": "billiard", "game": billiard_game}]
+
+    return game_pool
 
 
 class AiOlympicGym(gym.Env):
@@ -52,16 +97,17 @@ class AiOlympicGym(gym.Env):
             self.opponent_agent = static_agent()
         else:
             raise ValueError()
+        self.game_mode = env_config["game_mode"]
 
     def reset(self, **kwargs) -> dm_env.TimeStep:
         self.num_steps = 0
 
         if self.game_count == 0:
-            self.game = AI_Olympics(random_selection=True, minimap=False)
+            self.game.game_pool = make_game_pool(self.game_mode)
             self.entire_obs = self.game.reset()
             self.shuffled_game = self.game.selected_game_idx_pool
 
-            our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=-1)
+            our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
             info = {
                 "our_info": self.entire_obs[self.our_team_idx]["info"] if "info" in self.entire_obs[self.our_team_idx] else None,
                 "our_id": self.entire_obs[self.our_team_idx]["id"],
@@ -73,7 +119,7 @@ class AiOlympicGym(gym.Env):
 
             self.entire_obs = self.game.reset()
             self.shuffled_game = self.game.selected_game_idx_pool
-            our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=-1)
+            our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
             info = {
                 "our_info": self.entire_obs[self.our_team_idx]["info"] if "info" in self.entire_obs[
                     self.our_team_idx] else None,
@@ -84,6 +130,7 @@ class AiOlympicGym(gym.Env):
 
         if our_obs.dtype != 'float32':
             our_obs = our_obs.astype(np.float32)
+
         # return our_obs, info
         return dm_env.restart(observation=our_obs)
 
@@ -102,9 +149,10 @@ class AiOlympicGym(gym.Env):
         else:
             raise ValueError()
 
+        print(action, "!!!!!!!!!!!!!!!!!")
         self.entire_obs, self.entire_reward, terminated, game_info = self.game.step(action)
 
-        our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], -1)
+        our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], 0)
         if our_obs.dtype != 'float32':
             our_obs = our_obs.astype(np.float32)
 
@@ -137,8 +185,8 @@ class AiOlympicGym(gym.Env):
         }
         truncated = False
 
-        if our_obs.shape != (40, 40, 1):
-            our_obs = np.zeros(shape=(40, 40, 1), dtype=np.float32)
+        if our_obs.shape != (1, 40, 40):
+            our_obs = np.zeros(shape=(1, 40, 40), dtype=np.float32)
 
         if terminated:
             return dm_env.termination(reward=our_reward, observation=our_obs)
@@ -164,7 +212,7 @@ class AiOlympicGym(gym.Env):
     def observation_spec(self) -> specs.BoundedArray:
         """Returns the observation spec."""
         return specs.BoundedArray(
-            shape=(40, 40, 1),
+            shape=(1, 40, 40),
             dtype=np.float32,
             name="observation",
             minimum=np.inf,
