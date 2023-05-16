@@ -24,7 +24,6 @@ from dm_env import specs
 # -------------------------------
 import numpy as np
 from gymnasium.spaces import Discrete, Box
-from ray.rllib.env import EnvContext
 
 from environments.olympics_engine.AI_olympics import AI_Olympics
 from environments.olympics_engine.agent import random_agent, random_agent_2, static_agent
@@ -74,7 +73,7 @@ def make_game_pool(game_mode):
 class AiOlympicGym(gym.Env):
     def __init__(
         self,
-        env_config: EnvContext
+        env_config: {}
     ):
         self.__version__ = "0.1"
         self.num_steps = None
@@ -162,9 +161,9 @@ class AiOlympicGym(gym.Env):
 
         # Change terminated reward
         # Our team is win reward = 100 -> 1
-        if terminated and self.entire_reward[self.our_team_idx] == 100.0:
-            our_reward = 1.0
-            our_reward += game_info["reward"][self.our_team_idx]
+        # if terminated and self.entire_reward[self.our_team_idx] == 100.0:
+        #     our_reward = 1.0
+        #     our_reward += game_info["reward"][self.our_team_idx]
 
         # reset original ai olympic
         if terminated:
