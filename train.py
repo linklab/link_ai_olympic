@@ -65,7 +65,7 @@ class Workspace:
         env_config = {
             "our_team_idx": 0,
             "opponent_type": "static",  # "random"
-            "game_mode": "billiard",  # " running, table-hockey, football, wrestling, curling, billiard
+            "game_mode": "wrestling",  # " running, table-hockey, football, wrestling, curling, billiard
         }
 
         self.train_env = AiOlympicGym(env_config)
@@ -210,6 +210,8 @@ class Workspace:
 
             # take env step
             time_step = self.train_env.step(action)
+
+
             episode_reward += time_step.reward
             self.replay_storage.add(time_step)
             self.train_video_recorder.record(time_step.observation)

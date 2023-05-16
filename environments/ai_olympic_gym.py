@@ -149,7 +149,6 @@ class AiOlympicGym(gym.Env):
         else:
             raise ValueError()
 
-        print(action, "!!!!!!!!!!!!!!!!!")
         self.entire_obs, self.entire_reward, terminated, game_info = self.game.step(action)
 
         our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], 0)
@@ -203,6 +202,11 @@ class AiOlympicGym(gym.Env):
         # action scale: (action) * (max_action - min_action) + min_action
 
         scaled_action = []
+
+        if action[0] < 0:
+            action[0] = 0.0
+        if action[1] < 0:
+            action[1] = 0.0
 
         scaled_action.append(action[0] * (200 + 100) - 100)
         scaled_action.append(action[1] * (30 + 30) - 30)

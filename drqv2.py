@@ -50,7 +50,7 @@ class Encoder(nn.Module):
         super().__init__()
 
         assert len(obs_shape) == 3
-        self.repr_dim = 32 * 35 * 35
+        # self.repr_dim = 32 * 35 * 35
         self.repr_dim = 5408
 
         self.convnet = nn.Sequential(nn.Conv2d(obs_shape[0], 32, 3, stride=2),
