@@ -40,7 +40,8 @@ def make_agent(obs_spec, action_spec, cfg):
 class Workspace:
     def __init__(self, cfg):
         self.work_dir = Path.cwd()
-        self.model_save_dir = "/home/yh21h/git/link_ai_olympic/models"
+        # self.model_save_dir = "/home/yh21h/git/link_ai_olympic/models"
+        self.model_save_dir = os.path.dirname(os.path.realpath(__file__)) + "/models"
         print(f'workspace: {self.work_dir}')
 
         self.cfg = cfg
