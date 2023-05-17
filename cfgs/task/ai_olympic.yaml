@@ -1,9 +1,5 @@
 defaults:
-  - medium
+  - hard
   - _self_
 
 task_name: ai_olympic
-
-num_train_frames: 30100000
-stddev_schedule: 'linear(1.0,0.1,2000000)'
-batch_size: 512
