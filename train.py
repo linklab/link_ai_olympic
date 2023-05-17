@@ -57,31 +57,32 @@ class Workspace:
         # create logger
         self.logger = Logger(self.work_dir, use_tb=self.cfg.use_tb)
         # create envs
-        self.train_env = dmc.make(self.cfg.task_name, self.cfg.frame_stack,
-                                  self.cfg.action_repeat, self.cfg.seed)
-        self.eval_env = dmc.make(self.cfg.task_name, self.cfg.frame_stack,
-                                 self.cfg.action_repeat, self.cfg.seed)
+        if self.cfg.task_name == 'ai_olympic':
+            env_config = {
+                "our_team_idx": 0,
+                "opponent_type": "static",  # "random"
+                "game_mode": "wrestling",  # " running, table-hockey, football, wrestling, curling, billiard
+            }
 
-        env_config = {
-            "our_team_idx": 0,
-            "opponent_type": "static",  # "random"
-            "game_mode": "wrestling",  # " running, table-hockey, football, wrestling, curling, billiard
-        }
+            self.train_env = AiOlympicGym(env_config)
+            self.eval_env = AiOlympicGym(env_config)
 
-        self.train_env = AiOlympicGym(env_config)
-        self.eval_env = AiOlympicGym(env_config)
+            self.train_env = dmc.ActionDTypeWrapper(self.train_env, np.float32)
+            self.train_env = dmc.ActionRepeatWrapper(self.train_env, 1)
+            # self.train_env = action_scale.Wrapper(self.train_env, minimum=0.0, maximum=+1.0)
+            # self.train_env = dmc.FrameStackWrapper(self.train_env, 1, 'pixels')
+            self.train_env = dmc.ExtendedTimeStepWrapper(self.train_env)
 
-        self.train_env = dmc.ActionDTypeWrapper(self.train_env, np.float32)
-        self.train_env = dmc.ActionRepeatWrapper(self.train_env, 1)
-        self.train_env = action_scale.Wrapper(self.train_env, minimum=0.0, maximum=+1.0)
-        # self.train_env = dmc.FrameStackWrapper(self.train_env, 1, 'pixels')
-        self.train_env = dmc.ExtendedTimeStepWrapper(self.train_env)
-
-        self.eval_env = dmc.ActionDTypeWrapper(self.eval_env, np.float32)
-        self.eval_env = dmc.ActionRepeatWrapper(self.eval_env, 1)
-        self.eval_env = action_scale.Wrapper(self.eval_env, minimum=0.0, maximum=+1.0)
-        # self.eval_env = dmc.FrameStackWrapper(self.eval_env, 1, 'pixels')
-        self.eval_env = dmc.ExtendedTimeStepWrapper(self.eval_env)
+            self.eval_env = dmc.ActionDTypeWrapper(self.eval_env, np.float32)
+            self.eval_env = dmc.ActionRepeatWrapper(self.eval_env, 1)
+            # self.eval_env = action_scale.Wrapper(self.eval_env, minimum=0.0, maximum=+1.0)
+            # self.eval_env = dmc.FrameStackWrapper(self.eval_env, 1, 'pixels')
+            self.eval_env = dmc.ExtendedTimeStepWrapper(self.eval_env)
+        else:
+            self.train_env = dmc.make(self.cfg.task_name, self.cfg.frame_stack,
+                                      self.cfg.action_repeat, self.cfg.seed)
+            self.eval_env = dmc.make(self.cfg.task_name, self.cfg.frame_stack,
+                                     self.cfg.action_repeat, self.cfg.seed)
 
         # create replay buffer
         data_specs = (self.train_env.observation_spec(),
