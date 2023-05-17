@@ -66,7 +66,7 @@ class Workspace:
         if self.cfg.task_name == 'ai_olympic':
             env_config = {
                 "our_team_idx": 0,
-                "opponent_type": "static",  # "random"
+                "opponent_type": self.cfg.opponent_type,  # "random"
                 "game_mode": "wrestling",  # " running, table-hockey, football, wrestling, curling, billiard
                 "self_competition": self.cfg.self_competition # "True", "False"
             }
