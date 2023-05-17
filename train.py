@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import warnings
+from datetime import datetime
 
 from dm_control.suite.wrappers import action_scale
 
@@ -39,6 +40,7 @@ def make_agent(obs_spec, action_spec, cfg):
 class Workspace:
     def __init__(self, cfg):
         self.work_dir = Path.cwd()
+        self.model_save_dir = "/home/yh21h/git/link_ai_olympic/models"
         print(f'workspace: {self.work_dir}')
 
         self.cfg = cfg
@@ -47,6 +49,9 @@ class Workspace:
         self.setup()
 
         self.agent = make_agent(self.train_env.observation_spec(),
+                                self.train_env.action_spec(),
+                                self.cfg.agent)
+        self.opponent_agent = make_agent(self.train_env.observation_spec(),
                                 self.train_env.action_spec(),
                                 self.cfg.agent)
         self.timer = utils.Timer()
@@ -62,6 +67,7 @@ class Workspace:
                 "our_team_idx": 0,
                 "opponent_type": "static",  # "random"
                 "game_mode": "wrestling",  # " running, table-hockey, football, wrestling, curling, billiard
+                "self_competition": self.cfg.self_competition # "True", "False"
             }
 
             self.train_env = AiOlympicGym(env_config)
@@ -69,13 +75,13 @@ class Workspace:
 
             self.train_env = dmc.ActionDTypeWrapper(self.train_env, np.float32)
             self.train_env = dmc.ActionRepeatWrapper(self.train_env, 1)
-            # self.train_env = action_scale.Wrapper(self.train_env, minimum=0.0, maximum=+1.0)
+            self.train_env = action_scale.Wrapper(self.train_env, minimum=0.0, maximum=+1.0)
             # self.train_env = dmc.FrameStackWrapper(self.train_env, 1, 'pixels')
             self.train_env = dmc.ExtendedTimeStepWrapper(self.train_env)
 
             self.eval_env = dmc.ActionDTypeWrapper(self.eval_env, np.float32)
             self.eval_env = dmc.ActionRepeatWrapper(self.eval_env, 1)
-            # self.eval_env = action_scale.Wrapper(self.eval_env, minimum=0.0, maximum=+1.0)
+            self.eval_env = action_scale.Wrapper(self.eval_env, minimum=0.0, maximum=+1.0)
             # self.eval_env = dmc.FrameStackWrapper(self.eval_env, 1, 'pixels')
             self.eval_env = dmc.ExtendedTimeStepWrapper(self.eval_env)
         else:
@@ -131,10 +137,22 @@ class Workspace:
             time_step = self.eval_env.reset()
             self.video_recorder.init(self.eval_env, enabled=(episode == 0))
             while not time_step.last():
+                if self.cfg.self_competition and self.global_episode != 0:
+                    self.opponent_agent.encoder = torch.load(self.model_save_dir + "/encoder.pth")
+                    self.opponent_agent.actor = torch.load(self.model_save_dir + "/actor.pth")
                 with torch.no_grad(), utils.eval_mode(self.agent):
-                    action = self.agent.act(time_step.observation,
-                                            self.global_step,
-                                            eval_mode=True)
+                    if self.cfg.self_competition:
+                        action = self.agent.act(time_step.observation,
+                                                self.global_step,
+                                                eval_mode=True)
+                        opponent_action = self.opponent_agent.act(time_step.observation,
+                                                         self.global_step,
+                                                         eval_mode=True)
+                        action = np.vstack((action, opponent_action))
+                    else:
+                        action = self.agent.act(time_step.observation,
+                                                         self.global_step,
+                                                         eval_mode=True)
                 time_step = self.eval_env.step(action)
                 self.video_recorder.record(self.eval_env)
                 total_reward += time_step.reward
@@ -200,9 +218,18 @@ class Workspace:
 
             # sample action
             with torch.no_grad(), utils.eval_mode(self.agent):
-                action = self.agent.act(time_step.observation,
-                                        self.global_step,
-                                        eval_mode=False)
+                if self.cfg.self_competition:
+                    action = self.agent.act(time_step.observation,
+                                            self.global_step,
+                                            eval_mode=True)
+                    opponent_action = self.opponent_agent.act(time_step.observation,
+                                                              self.global_step,
+                                                              eval_mode=True)
+                    action = np.vstack((action, opponent_action))
+                else:
+                    action = self.agent.act(time_step.observation,
+                                            self.global_step,
+                                            eval_mode=True)
 
             # try to update the agent
             if not seed_until_step(self.global_step):
@@ -211,11 +238,16 @@ class Workspace:
 
             # take env step
             time_step = self.train_env.step(action)
-
-
             episode_reward += time_step.reward
             self.replay_storage.add(time_step)
             self.train_video_recorder.record(time_step.observation)
+
+            if self._global_episode % self.cfg.model_save_episode == 0:
+                torch.save(self.agent.encoder, self.model_save_dir + "/encoder.pth")
+                torch.save(self.agent.actor, self.model_save_dir + "/actor.pth")
+                torch.save(self.agent.critic, self.model_save_dir + "/critic.pth")
+                torch.save(self.agent.aug, self.model_save_dir + "/aug.pth")
+
             episode_step += 1
             self._global_step += 1
 

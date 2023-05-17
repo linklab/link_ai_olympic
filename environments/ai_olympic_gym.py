@@ -97,6 +97,7 @@ class AiOlympicGym(gym.Env):
         else:
             raise ValueError()
         self.game_mode = env_config["game_mode"]
+        self.self_competition = env_config["self_competition"]
 
     def reset(self, **kwargs) -> dm_env.TimeStep:
         self.num_steps = 0
@@ -133,13 +134,16 @@ class AiOlympicGym(gym.Env):
         # return our_obs, info
         return dm_env.restart(observation=our_obs)
 
-    def step(self, our_action) -> dm_env.TimeStep:
+    def step(self, action) -> dm_env.TimeStep:
         self.num_steps += 1
 
-        opponent_action = self.opponent_agent.act(self.entire_obs[1 - self.our_team_idx]['agent_obs'])
-
         # our_action, opponent_action = self.action_scale(our_action), self.action_scale(opponent_action)
-        our_action = self.olympic_action_scale(our_action)
+        if self.self_competition:
+            our_action = self.olympic_action_scale(action[0])
+            opponent_action = self.olympic_action_scale(action[1])
+        else:
+            our_action = self.olympic_action_scale(action)
+            opponent_action = self.opponent_agent.act(self.entire_obs[1 - self.our_team_idx]['agent_obs'])
 
         if self.our_team_idx == 0:
             action = [our_action, opponent_action]
@@ -201,7 +205,6 @@ class AiOlympicGym(gym.Env):
         # action scale: (action) * (max_action - min_action) + min_action
 
         scaled_action = []
-
         if action[0] < 0:
             action[0] = 0.0
         if action[1] < 0:
