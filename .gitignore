@@ -12,4 +12,4 @@ check_sweep.py
 cancel_sweep.py
 .idea
 cfgs/config.yaml
-.pth
+models/*.pth
