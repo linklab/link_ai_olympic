@@ -246,7 +246,6 @@ class Workspace:
             self.train_video_recorder.record(time_step.observation)
 
             if self._global_episode % self.cfg.model_save_episode == 0:
-                print("opponent_agent load")
                 torch.save(self.agent.encoder, self.model_save_dir + "/encoder.pth")
                 torch.save(self.agent.actor, self.model_save_dir + "/actor.pth")
                 torch.save(self.agent.critic, self.model_save_dir + "/critic.pth")
