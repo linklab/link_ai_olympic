@@ -67,7 +67,7 @@ class Workspace:
             env_config = {
                 "our_team_idx": 0,
                 "opponent_type": self.cfg.opponent_type,  # "random"
-                "game_mode": "wrestling",  # " running, table-hockey, football, wrestling, curling, billiard
+                "game_mode": self.cfg.game_mode,  # " running, table-hockey, football, wrestling, curling, billiard
                 "self_competition": self.cfg.self_competition # "True", "False"
             }
 
@@ -149,11 +149,12 @@ class Workspace:
                         opponent_action = self.opponent_agent.act(time_step.observation,
                                                          self.global_step,
                                                          eval_mode=True)
-                        action = np.vstack((action, opponent_action))
                     else:
                         action = self.agent.act(time_step.observation,
                                                          self.global_step,
                                                          eval_mode=True)
+                if self.cfg.self_competition:
+                    self.eval_env.set_opponent_action(opponent_action)
                 time_step = self.eval_env.step(action)
                 self.video_recorder.record(self.eval_env)
                 total_reward += time_step.reward
@@ -226,7 +227,6 @@ class Workspace:
                     opponent_action = self.opponent_agent.act(time_step.observation,
                                                               self.global_step,
                                                               eval_mode=True)
-                    action = np.vstack((action, opponent_action))
                 else:
                     action = self.agent.act(time_step.observation,
                                             self.global_step,
@@ -238,12 +238,15 @@ class Workspace:
                 self.logger.log_metrics(metrics, self.global_frame, ty='train')
 
             # take env step
+            if self.cfg.self_competition:
+                self.train_env.set_opponent_action(opponent_action)
             time_step = self.train_env.step(action)
             episode_reward += time_step.reward
             self.replay_storage.add(time_step)
             self.train_video_recorder.record(time_step.observation)
 
             if self._global_episode % self.cfg.model_save_episode == 0:
+                print("opponent_agent load")
                 torch.save(self.agent.encoder, self.model_save_dir + "/encoder.pth")
                 torch.save(self.agent.actor, self.model_save_dir + "/actor.pth")
                 torch.save(self.agent.critic, self.model_save_dir + "/critic.pth")

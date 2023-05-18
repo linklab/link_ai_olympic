@@ -82,6 +82,7 @@ class AiOlympicGym(gym.Env):
 
         self.entire_obs = None
         self.entire_reward = None
+        self.opponent_action = None
 
         self.our_team_idx = env_config["our_team_idx"]   # 0 or 1
         self.game = AI_Olympics(random_selection=True, minimap=False)
@@ -139,8 +140,8 @@ class AiOlympicGym(gym.Env):
 
         # our_action, opponent_action = self.action_scale(our_action), self.action_scale(opponent_action)
         if self.self_competition:
-            our_action = self.olympic_action_scale(action[0])
-            opponent_action = self.olympic_action_scale(action[1])
+            our_action = self.olympic_action_scale(action)
+            opponent_action = self.olympic_action_scale(self.opponent_action)
         else:
             our_action = self.olympic_action_scale(action)
             opponent_action = self.opponent_agent.act(self.entire_obs[1 - self.our_team_idx]['agent_obs'])
@@ -214,6 +215,9 @@ class AiOlympicGym(gym.Env):
         scaled_action.append(action[1] * (30 + 30) - 30)
 
         return scaled_action
+
+    def set_opponent_action(self, opponent_action):
+        self.opponent_action = opponent_action
 
     def observation_spec(self) -> specs.BoundedArray:
         """Returns the observation spec."""
