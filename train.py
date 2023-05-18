@@ -218,6 +218,11 @@ class Workspace:
                                 self.global_frame)
                 self.eval()
 
+            if self.cfg.self_competition and self._global_episode % self.cfg.model_save_episode == 0:
+                if self._global_episode != 0:
+                    self.opponent_agent.encoder = torch.load(self.model_save_dir + "/encoder.pth")
+                    self.opponent_agent.actor = torch.load(self.model_save_dir + "/actor.pth")
+
             # sample action
             with torch.no_grad(), utils.eval_mode(self.agent):
                 if self.cfg.self_competition:
