@@ -60,12 +60,14 @@ def make_game_pool(game_mode):
     elif game_mode == "billiard":
         game_pool = [{"name": "billiard", "game": billiard_game}]
     else:
-        game_pool = [{"name": 'running-competition', 'game': running_game},
-                          {"name": 'table-hockey', "game": tablehockey_game},
-                          {"name": 'football', "game": football_game},
-                          {"name": 'wrestling', "game": wrestling_game},
-                          {"name": "curling", "game": curling_game},
-                          {"name": "billiard", "game": billiard_game}]
+        game_pool = [
+            {"name": 'running-competition', 'game': running_game},
+            {"name": 'table-hockey', "game": tablehockey_game},
+            {"name": 'football', "game": football_game},
+            {"name": 'wrestling', "game": wrestling_game},
+            {"name": "curling", "game": curling_game},
+            {"name": "billiard", "game": billiard_game}
+        ]
 
     return game_pool
 
@@ -109,6 +111,9 @@ class AiOlympicGym(gym.Env):
             self.shuffled_game = self.game.selected_game_idx_pool
 
             our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
+            # our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
+            # idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
+            # our_obs = np.stack((our_obs, idx_features), axis=0)
             info = {
                 "our_info": self.entire_obs[self.our_team_idx]["info"] if "info" in self.entire_obs[self.our_team_idx] else None,
                 "our_id": self.entire_obs[self.our_team_idx]["id"],
@@ -117,10 +122,13 @@ class AiOlympicGym(gym.Env):
             }
         else:
             self.game.game_pool.pop(self.shuffled_game[0])  # remove the previous game
-
             self.entire_obs = self.game.reset()
             self.shuffled_game = self.game.selected_game_idx_pool
+
             our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
+            # our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
+            # idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
+            # our_obs = np.stack((our_obs, idx_features), axis=0)
             info = {
                 "our_info": self.entire_obs[self.our_team_idx]["info"] if "info" in self.entire_obs[
                     self.our_team_idx] else None,
@@ -155,7 +163,10 @@ class AiOlympicGym(gym.Env):
 
         self.entire_obs, self.entire_reward, terminated, game_info = self.game.step(action)
 
-        our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], 0)
+        our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
+        # our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
+        # idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
+        # our_obs = np.stack((our_obs, idx_features), axis=0)
         if our_obs.dtype != 'float32':
             our_obs = our_obs.astype(np.float32)
 

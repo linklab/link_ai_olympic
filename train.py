@@ -52,9 +52,10 @@ class Workspace:
         self.agent = make_agent(self.train_env.observation_spec(),
                                 self.train_env.action_spec(),
                                 self.cfg.agent)
-        self.opponent_agent = make_agent(self.train_env.observation_spec(),
-                                self.train_env.action_spec(),
-                                self.cfg.agent)
+        if self.cfg.self_competition:
+            self.opponent_agent = make_agent(self.train_env.observation_spec(),
+                                    self.train_env.action_spec(),
+                                    self.cfg.agent)
         self.timer = utils.Timer()
         self._global_step = 0
         self._global_episode = 0
@@ -65,7 +66,7 @@ class Workspace:
         # create envs
         if self.cfg.task_name == 'ai_olympic':
             env_config = {
-                "our_team_idx": 0,
+                "our_team_idx": self.cfg.our_team_idx,
                 "opponent_type": self.cfg.opponent_type,  # "random"
                 "game_mode": self.cfg.game_mode,  # " running, table-hockey, football, wrestling, curling, billiard
                 "self_competition": self.cfg.self_competition # "True", "False"
@@ -138,23 +139,23 @@ class Workspace:
             time_step = self.eval_env.reset()
             self.video_recorder.init(self.eval_env, enabled=(episode == 0))
             while not time_step.last():
-                if self.cfg.self_competition and self.global_episode != 0:
-                    self.opponent_agent.encoder = torch.load(self.model_save_dir + "/encoder.pth")
-                    self.opponent_agent.actor = torch.load(self.model_save_dir + "/actor.pth")
+                # if self.cfg.self_competition and self.global_episode != 0:
+                #     self.opponent_agent.encoder = torch.load(self.model_save_dir + "/encoder.pth")
+                #     self.opponent_agent.actor = torch.load(self.model_save_dir + "/actor.pth")
                 with torch.no_grad(), utils.eval_mode(self.agent):
-                    if self.cfg.self_competition:
-                        action = self.agent.act(time_step.observation,
-                                                self.global_step,
-                                                eval_mode=True)
-                        opponent_action = self.opponent_agent.act(time_step.observation,
-                                                         self.global_step,
-                                                         eval_mode=True)
-                    else:
-                        action = self.agent.act(time_step.observation,
-                                                         self.global_step,
-                                                         eval_mode=True)
-                if self.cfg.self_competition:
-                    self.eval_env.set_opponent_action(opponent_action)
+                    # if self.cfg.self_competition:
+                    #     action = self.agent.act(time_step.observation,
+                    #                             self.global_step,
+                    #                             eval_mode=True)
+                    #     opponent_action = self.opponent_agent.act(time_step.observation,
+                    #                                      self.global_step,
+                    #                                      eval_mode=True)
+                    # else:
+                    action = self.agent.act(time_step.observation,
+                                                     self.global_step,
+                                                     eval_mode=True)
+                # if self.cfg.self_competition:
+                #     self.eval_env.set_opponent_action(opponent_action)
                 time_step = self.eval_env.step(action)
                 self.video_recorder.record(self.eval_env)
                 total_reward += time_step.reward
@@ -218,24 +219,24 @@ class Workspace:
                                 self.global_frame)
                 self.eval()
 
-            if self.cfg.self_competition and self._global_episode % self.cfg.model_save_episode == 0:
-                if self._global_episode != 0:
-                    self.opponent_agent.encoder = torch.load(self.model_save_dir + "/encoder.pth")
-                    self.opponent_agent.actor = torch.load(self.model_save_dir + "/actor.pth")
+            # if self.cfg.self_competition and self._global_episode % self.cfg.model_save_episode == 0:
+            #     if self._global_episode != 0:
+            #         self.opponent_agent.encoder = torch.load(self.model_save_dir + "/encoder.pth")
+            #         self.opponent_agent.actor = torch.load(self.model_save_dir + "/actor.pth")
 
             # sample action
             with torch.no_grad(), utils.eval_mode(self.agent):
-                if self.cfg.self_competition:
-                    action = self.agent.act(time_step.observation,
-                                            self.global_step,
-                                            eval_mode=True)
-                    opponent_action = self.opponent_agent.act(time_step.observation,
-                                                              self.global_step,
-                                                              eval_mode=True)
-                else:
-                    action = self.agent.act(time_step.observation,
-                                            self.global_step,
-                                            eval_mode=True)
+                # if self.cfg.self_competition:
+                #     action = self.agent.act(time_step.observation,
+                #                             self.global_step,
+                #                             eval_mode=True)
+                #     opponent_action = self.opponent_agent.act(time_step.observation,
+                #                                               self.global_step,
+                #                                               eval_mode=True)
+                # else:
+                action = self.agent.act(time_step.observation,
+                                        self.global_step,
+                                        eval_mode=True)
 
             # try to update the agent
             if not seed_until_step(self.global_step):
@@ -243,8 +244,8 @@ class Workspace:
                 self.logger.log_metrics(metrics, self.global_frame, ty='train')
 
             # take env step
-            if self.cfg.self_competition:
-                self.train_env.set_opponent_action(opponent_action)
+            # if self.cfg.self_competition:
+            #     self.train_env.set_opponent_action(opponent_action)
             time_step = self.train_env.step(action)
             episode_reward += time_step.reward
             self.replay_storage.add(time_step)
