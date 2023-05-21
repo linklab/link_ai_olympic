@@ -122,6 +122,39 @@ class Critic(nn.Module):
         return q1, q2
 
 
+class AutoEncoder(nn.Module):
+    def __init__(self, obs_shape):
+        super().__init__()
+
+        assert len(obs_shape) == 3
+
+        self.encoder_hidden_layer = nn.Sequential(
+            nn.Conv2d(obs_shape[0], 32, 2, stride=2),
+            nn.ReLU()
+        )
+        self.encoder_output_layer = nn.Sequential(
+            nn.Conv2d(32, 32, 1, stride=1),
+            nn.ReLU()
+        )
+        self.decoder_hidden_layer = nn.Sequential(
+            nn.ConvTranspose2d(32, 32, 1, stride=1),
+            nn.ReLU()
+        )
+        self.decoder_output_layer = nn.Sequential(
+            nn.ConvTranspose2d(32, obs_shape[0], 2, stride=2)
+        )
+        self.apply(utils.weight_init)
+
+    def forward(self, obs):
+        activation = self.encoder_hidden_layer(obs)
+        encode = self.encoder_output_layer(activation)
+        activation = self.decoder_hidden_layer(encode)
+        activation = self.decoder_output_layer(activation)
+        reconstructed = torch.sigmoid(activation)
+
+        return reconstructed
+
+
 class DrQV2Agent:
     def __init__(self, obs_shape, action_shape, device, lr, feature_dim,
                  hidden_dim, critic_target_tau, num_expl_steps,
@@ -144,11 +177,16 @@ class DrQV2Agent:
         self.critic_target = Critic(self.encoder.repr_dim, action_shape,
                                     feature_dim, hidden_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
+        self.auto_encoder = AutoEncoder(obs_shape).to(device)
+
+        # MSE loss
+        self.mse_loss = nn.MSELoss(size_average=None, reduce=None, reduction='none')
 
         # optimizers
         self.encoder_opt = torch.optim.Adam(self.encoder.parameters(), lr=lr)
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=lr)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
+        self.auto_encoder_opt = torch.optim.Adam(self.auto_encoder.parameters(), lr=lr)
 
         # data augmentation
         self.aug = RandomShiftsAug(pad=4)
@@ -161,6 +199,7 @@ class DrQV2Agent:
         self.encoder.train(training)
         self.actor.train(training)
         self.critic.train(training)
+        self.auto_encoder.train(training)
 
     def act(self, obs, step, eval_mode):
         obs = torch.as_tensor(obs, device=self.device)
@@ -228,6 +267,14 @@ class DrQV2Agent:
 
         return metrics
 
+    def update_auto_encoder(self, next_obs, step):
+        decoded_next_obs = self.auto_encoder(next_obs)
+        loss = self.mse_loss(decoded_next_obs, next_obs).sum()
+
+        self.auto_encoder_opt.zero_grad(set_to_none=True)
+        loss.backward()
+        self.auto_encoder_opt.step()
+
     def update(self, replay_iter, step):
         metrics = dict()
 
@@ -237,6 +284,15 @@ class DrQV2Agent:
         batch = next(replay_iter)
         obs, action, reward, discount, next_obs = utils.to_torch(
             batch, self.device)
+
+        with torch.no_grad():
+            decoded_next_obs = self.auto_encoder(next_obs)
+        intrinsic_reward = self.mse_loss(decoded_next_obs, next_obs).sum()
+        intrinsic_reward *= 0.0000005
+        reward += intrinsic_reward
+
+        # update autoencoder
+        self.update_auto_encoder(next_obs, step)
 
         # augment
         obs = self.aug(obs.float())
@@ -250,8 +306,7 @@ class DrQV2Agent:
             metrics['batch_reward'] = reward.mean().item()
 
         # update critic
-        metrics.update(
-            self.update_critic(obs, action, reward, discount, next_obs, step))
+        metrics.update(self.update_critic(obs, action, reward, discount, next_obs, step))
 
         # update actor
         metrics.update(self.update_actor(obs.detach(), step))
