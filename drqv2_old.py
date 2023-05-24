@@ -128,48 +128,27 @@ class AutoEncoder(nn.Module):
 
         assert len(obs_shape) == 3
 
-        self.encoder_hidden_layer1 = nn.Sequential(
+        self.encoder_hidden_layer = nn.Sequential(
             nn.Conv2d(obs_shape[0], 32, 2, stride=2),
             nn.ReLU()
         )
-        self.encoder_hidden_layer2 = nn.Sequential(
-            nn.Conv2d(32, 16, 2, stride=2),
-            nn.ReLU()
-        )
-        self.encoder_hidden_layer3 = nn.Sequential(
-            nn.Conv2d(16, 16, 2, stride=2),
-            nn.ReLU()
-        )
         self.encoder_output_layer = nn.Sequential(
-            nn.Conv2d(16, 8, 1, stride=1),
+            nn.Conv2d(32, 32, 1, stride=1),
             nn.ReLU()
         )
-        self.decoder_hidden_layer1 = nn.Sequential(
-            nn.ConvTranspose2d(8, 16, 1, stride=1),
-            nn.ReLU()
-        )
-        self.decoder_hidden_layer2 = nn.Sequential(
-            nn.ConvTranspose2d(16, 16, 2, stride=2),
-            nn.ReLU()
-        )
-        self.decoder_hidden_layer3 = nn.Sequential(
-            nn.ConvTranspose2d(16, 32, 2, stride=2),
+        self.decoder_hidden_layer = nn.Sequential(
+            nn.ConvTranspose2d(32, 32, 1, stride=1),
             nn.ReLU()
         )
         self.decoder_output_layer = nn.Sequential(
-            nn.ConvTranspose2d(32, obs_shape[0], 2, stride=2),
-            nn.Sigmoid()
+            nn.ConvTranspose2d(32, obs_shape[0], 2, stride=2)
         )
         self.apply(utils.weight_init)
 
     def forward(self, obs):
-        activation = self.encoder_hidden_layer1(obs)
-        activation = self.encoder_hidden_layer2(activation)
-        activation = self.encoder_hidden_layer3(activation)
+        activation = self.encoder_hidden_layer(obs)
         encode = self.encoder_output_layer(activation)
-        activation = self.decoder_hidden_layer1(encode)
-        activation = self.decoder_hidden_layer2(activation)
-        activation = self.decoder_hidden_layer3(activation)
+        activation = self.decoder_hidden_layer(encode)
         activation = self.decoder_output_layer(activation)
         reconstructed = torch.sigmoid(activation)
 
@@ -289,23 +268,12 @@ class DrQV2Agent:
         return metrics
 
     def update_auto_encoder(self, next_obs, step):
-        bs = next_obs.shape[0]
         decoded_next_obs = self.auto_encoder(next_obs)
-        decoded_next_obs = decoded_next_obs.reshape((bs, -1))
-        next_obs = next_obs.reshape((bs, -1)) / 8.0
-        loss = self.mse_loss(decoded_next_obs, next_obs).mean(1)
-        intrinsic_rewards = loss.clone()
-        loss = loss.mean()
+        loss = self.mse_loss(decoded_next_obs, next_obs).sum()
 
         self.auto_encoder_opt.zero_grad(set_to_none=True)
         loss.backward()
         self.auto_encoder_opt.step()
-
-        intrinsic_rewards *= 0.005
-
-        print("loss: ", loss.item())
-
-        return intrinsic_rewards
 
     def update(self, replay_iter, step):
         metrics = dict()
@@ -317,10 +285,14 @@ class DrQV2Agent:
         obs, action, reward, discount, next_obs = utils.to_torch(
             batch, self.device)
 
+        with torch.no_grad():
+            decoded_next_obs = self.auto_encoder(next_obs)
+        intrinsic_reward = self.mse_loss(decoded_next_obs, next_obs).sum()
+        intrinsic_reward *= 0.0000005
+        reward += intrinsic_reward
+
         # update autoencoder
-        intrinsic_reward = self.update_auto_encoder(next_obs, step)
-        intrinsic_reward = intrinsic_reward.unsqueeze(1)
-        reward += intrinsic_reward.detach()
+        self.update_auto_encoder(next_obs, step)
 
         # augment
         obs = self.aug(obs.float())
