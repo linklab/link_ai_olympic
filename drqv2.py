@@ -303,7 +303,7 @@ class DrQV2Agent:
 
         intrinsic_rewards *= 0.005
 
-        print("loss: ", loss.item())
+        # print("loss: ", loss.item())
 
         return intrinsic_rewards
 

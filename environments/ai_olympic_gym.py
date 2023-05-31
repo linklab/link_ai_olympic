@@ -101,6 +101,7 @@ class AiOlympicGym(gym.Env):
             raise ValueError()
         self.game_mode = env_config["game_mode"]
         self.self_competition = env_config["self_competition"]
+        self.obs_channel_num = env_config["obs_channel_num"]
 
     def reset(self, **kwargs) -> dm_env.TimeStep:
         self.num_steps = 0
@@ -110,10 +111,12 @@ class AiOlympicGym(gym.Env):
             self.entire_obs = self.game.reset()
             self.shuffled_game = self.game.selected_game_idx_pool
 
-            our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
-            # our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
-            # idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
-            # our_obs = np.stack((our_obs, idx_features), axis=0)
+            if self.obs_channel_num == 1:
+                our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
+            elif self.obs_channel_num == 2:
+                our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
+                idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
+                our_obs = np.stack((our_obs, idx_features), axis=0)
             info = {
                 "our_info": self.entire_obs[self.our_team_idx]["info"] if "info" in self.entire_obs[self.our_team_idx] else None,
                 "our_id": self.entire_obs[self.our_team_idx]["id"],
@@ -125,10 +128,12 @@ class AiOlympicGym(gym.Env):
             self.entire_obs = self.game.reset()
             self.shuffled_game = self.game.selected_game_idx_pool
 
-            our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
-            # our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
-            # idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
-            # our_obs = np.stack((our_obs, idx_features), axis=0)
+            if self.obs_channel_num == 1:
+                our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
+            elif self.obs_channel_num == 2:
+                our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
+                idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
+                our_obs = np.stack((our_obs, idx_features), axis=0)
             info = {
                 "our_info": self.entire_obs[self.our_team_idx]["info"] if "info" in self.entire_obs[
                     self.our_team_idx] else None,
@@ -163,10 +168,12 @@ class AiOlympicGym(gym.Env):
 
         self.entire_obs, self.entire_reward, terminated, game_info = self.game.step(action)
 
-        our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
-        # our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
-        # idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
-        # our_obs = np.stack((our_obs, idx_features), axis=0)
+        if self.obs_channel_num == 1:
+            our_obs = np.expand_dims(self.entire_obs[self.our_team_idx]['agent_obs'], axis=0)
+        elif self.obs_channel_num == 2:
+            our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
+            idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
+            our_obs = np.stack((our_obs, idx_features), axis=0)
         if our_obs.dtype != 'float32':
             our_obs = our_obs.astype(np.float32)
 
@@ -199,8 +206,8 @@ class AiOlympicGym(gym.Env):
         }
         truncated = False
 
-        if our_obs.shape != (1, 40, 40):
-            our_obs = np.zeros(shape=(1, 40, 40), dtype=np.float32)
+        if our_obs.shape != (self.obs_channel_num, 40, 40):
+            our_obs = np.zeros(shape=(self.obs_channel_num, 40, 40), dtype=np.float32)
 
         if terminated:
             return dm_env.termination(reward=our_reward, observation=our_obs)
@@ -233,7 +240,7 @@ class AiOlympicGym(gym.Env):
     def observation_spec(self) -> specs.BoundedArray:
         """Returns the observation spec."""
         return specs.BoundedArray(
-            shape=(1, 40, 40),
+            shape=(self.obs_channel_num, 40, 40),
             dtype=np.float32,
             name="observation",
             minimum=np.inf,

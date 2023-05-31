@@ -69,7 +69,8 @@ class Workspace:
                 "our_team_idx": self.cfg.our_team_idx,
                 "opponent_type": self.cfg.opponent_type,  # "random"
                 "game_mode": self.cfg.game_mode,  # " running, table-hockey, football, wrestling, curling, billiard
-                "self_competition": self.cfg.self_competition # "True", "False"
+                "self_competition": self.cfg.self_competition, # "True", "False"
+                "obs_channel_num": self.cfg.obs_channel_num
             }
 
             self.train_env = AiOlympicGym(env_config)
@@ -251,11 +252,11 @@ class Workspace:
             self.replay_storage.add(time_step)
             self.train_video_recorder.record(time_step.observation)
 
-            if self._global_episode % self.cfg.model_save_episode == 0:
-                torch.save(self.agent.encoder, self.model_save_dir + "/encoder.pth")
-                torch.save(self.agent.actor, self.model_save_dir + "/actor.pth")
-                torch.save(self.agent.critic, self.model_save_dir + "/critic.pth")
-                torch.save(self.agent.aug, self.model_save_dir + "/aug.pth")
+            # if self._global_episode % self.cfg.model_save_episode == 0:
+            #     torch.save(self.agent.encoder, self.model_save_dir + "/encoder.pth")
+            #     torch.save(self.agent.actor, self.model_save_dir + "/actor.pth")
+            #     torch.save(self.agent.critic, self.model_save_dir + "/critic.pth")
+            #     torch.save(self.agent.aug, self.model_save_dir + "/aug.pth")
 
             episode_step += 1
             self._global_step += 1
