@@ -79,6 +79,90 @@ class AI_Olympics:
 
         return init_obs
 
+    def get_state(self):
+        state = []
+        # wall, cross, arc
+        state.append([[0.0 for _ in range(7)] for w in range(12)])
+        state.append([[0.0 for _ in range(6)] for w in range(13)])
+        state.append([[0.0 for _ in range(7)] for w in range(4)])
+
+        agent_pos_max = 1100
+        wall_pos_max = 1100
+        wall_length_max = 1100
+        wall_width_max = 2
+        cross_pos_max = 1100
+        cross_length_max = 1100
+        cross_width_max = 5
+        arc_pos_max = 1100
+        arc_radian_max = 180
+
+        n_wall = 0
+        n_cross = 0
+        n_arc = 0
+
+        for object_idx in range(len(self.map["objects"])):
+            object = self.map["objects"][object_idx]
+
+            wall = []
+            if object.type == 'wall':
+                wall_pos = [y / wall_pos_max for a in object.init_pos for y in a]
+                assert max(wall_pos) <= 1.0
+                wall += wall_pos
+                if object.ball_can_pass:
+                    wall.append(1.0)
+                else:
+                    wall.append(0.0)
+                wall_length = object.length / wall_length_max
+                assert wall_length <= 1.0
+                wall_width = object.width / wall_width_max
+                assert wall_length <= 1.0
+                wall.append(wall_length)
+                wall.append(wall_width)
+                state[0][n_wall] = wall
+                n_wall += 1
+
+            cross = []
+            if object.type == 'cross':
+                cross_pos = [y / cross_pos_max for a in object.init_pos for y in a]
+                assert max(cross_pos) <= 1.0
+                cross += cross_pos
+                cross_length = object.length / cross_length_max
+                assert cross_length <= 1.0
+                cross_width = object.width / cross_width_max
+                assert cross_width <= 1.0
+                cross.append(cross_length)
+                cross.append(cross_width)
+                state[1][n_cross] = cross
+                n_cross += 1
+
+            arc = []
+            if object.type == 'arc':
+                arc_pos = [p / arc_pos_max for p in object.init_pos]
+                assert max(arc_pos) <= 1.0
+                arc += arc_pos
+                if object.ball_can_pass:
+                    arc.append(1.0)
+                else:
+                    arc.append(0.0)
+                arc_start_radian = object.start_radian / arc_radian_max
+                assert arc_start_radian <= 1.0
+                arc_end_radian = object.end_radian / arc_radian_max
+                assert arc_end_radian <= 1.0
+                arc.append(arc_start_radian)
+                arc.append(arc_end_radian)
+                state[2][n_arc] = arc
+                n_arc += 1
+        state_flattened = [y for a in state for x in a for y in x]
+
+        agent = [0.0 for _ in range(6)]
+        agents_pos = [y / agent_pos_max for a in self.agent_pos for y in a]
+        assert max(agents_pos) <= 1.0
+        for i, a in enumerate(agents_pos):
+            agent[i] = a
+        full_state = agents_pos + state_flattened
+        print("full_state: ", len(full_state))
+        return full_state
+
     def step(self, action_list):
         self.episode_steps += 1
         obs, reward, done, info = self.current_game.step(action_list)

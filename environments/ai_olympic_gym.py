@@ -148,6 +148,9 @@ class AiOlympicGym(gym.Env):
         # return our_obs, info
         return dm_env.restart(observation=our_obs)
 
+    def get_state(self):
+        return self.game.get_state()
+
     def step(self, action) -> dm_env.TimeStep:
         self.num_steps += 1
 
