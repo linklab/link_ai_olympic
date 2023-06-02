@@ -176,6 +176,60 @@ class AutoEncoder(nn.Module):
         return reconstructed
 
 
+class StateEncoder(nn.Module):
+    def __init__(self, obs_shape):
+        super().__init__()
+
+        assert len(obs_shape) == 3
+
+        self.encoder_hidden_layer1 = nn.Sequential(
+            nn.Conv2d(obs_shape[0], 32, 2, stride=2),
+            nn.ReLU()
+        )
+        self.encoder_hidden_layer2 = nn.Sequential(
+            nn.Conv2d(32, 16, 2, stride=2),
+            nn.ReLU()
+        )
+        self.encoder_hidden_layer3 = nn.Sequential(
+            nn.Conv2d(16, 16, 2, stride=2),
+            nn.ReLU()
+        )
+        self.encoder_output_layer = nn.Sequential(
+            nn.Conv2d(16, 8, 1, stride=1),
+            nn.ReLU()
+        )
+        self.decoder_hidden_layer1 = nn.Sequential(
+            nn.ConvTranspose2d(8, 16, 1, stride=1),
+            nn.ReLU()
+        )
+        self.decoder_hidden_layer2 = nn.Sequential(
+            nn.ConvTranspose2d(16, 16, 2, stride=2),
+            nn.ReLU()
+        )
+        self.decoder_hidden_layer3 = nn.Sequential(
+            nn.ConvTranspose2d(16, 32, 2, stride=2),
+            nn.ReLU()
+        )
+        self.decoder_output_layer = nn.Sequential(
+            nn.ConvTranspose2d(32, obs_shape[0], 2, stride=2),
+            nn.Sigmoid()
+        )
+        self.apply(utils.weight_init)
+
+    def forward(self, obs):
+        activation = self.encoder_hidden_layer1(obs)
+        activation = self.encoder_hidden_layer2(activation)
+        activation = self.encoder_hidden_layer3(activation)
+        encode = self.encoder_output_layer(activation)
+        activation = self.decoder_hidden_layer1(encode)
+        activation = self.decoder_hidden_layer2(activation)
+        activation = self.decoder_hidden_layer3(activation)
+        activation = self.decoder_output_layer(activation)
+        reconstructed = torch.sigmoid(activation)
+
+        return reconstructed
+
+
 class DrQV2Agent:
     def __init__(self, obs_shape, action_shape, device, lr, feature_dim,
                  hidden_dim, critic_target_tau, num_expl_steps,
@@ -188,6 +242,7 @@ class DrQV2Agent:
         self.stddev_schedule = stddev_schedule
         self.stddev_clip = stddev_clip
 
+        obs_shape = [2, 40, 40]
         # models
         self.encoder = Encoder(obs_shape).to(device)
         self.actor = Actor(self.encoder.repr_dim, action_shape, feature_dim,
@@ -199,6 +254,7 @@ class DrQV2Agent:
                                     feature_dim, hidden_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
         self.auto_encoder = AutoEncoder(obs_shape).to(device)
+        self.state_encoder = StateEncoder(obs_shape).to(device)
 
         # MSE loss
         self.mse_loss = nn.MSELoss(size_average=None, reduce=None, reduction='none')
@@ -221,8 +277,12 @@ class DrQV2Agent:
         self.actor.train(training)
         self.critic.train(training)
         self.auto_encoder.train(training)
+        self.state_encoder.train(training)
 
     def act(self, obs, step, eval_mode):
+        obs_len = obs.shape[0]
+        # state = obs[-1:]
+        obs = obs[:obs_len - 1]
         obs = torch.as_tensor(obs, device=self.device)
         obs = self.encoder(obs.unsqueeze(0))
         stddev = utils.schedule(self.stddev_schedule, step)
@@ -290,6 +350,10 @@ class DrQV2Agent:
 
     def update_auto_encoder(self, next_obs, step):
         bs = next_obs.shape[0]
+        obs_len = next_obs.shape[1]
+        state = next_obs[:, -1:]
+        next_obs = next_obs[:, :obs_len - 1]
+
         decoded_next_obs = self.auto_encoder(next_obs)
         decoded_next_obs = decoded_next_obs.reshape((bs, -1))
         next_obs = next_obs.reshape((bs, -1)) / 8.0
@@ -326,6 +390,14 @@ class DrQV2Agent:
         obs = self.aug(obs.float())
         next_obs = self.aug(next_obs.float())
         # encode
+        obs_len = obs.shape[1]
+        obs_len = obs.shape[1]
+        state = obs[:, -1:]
+        obs = obs[:, :obs_len - 1]
+
+        state = next_obs[:, -1:]
+        next_obs = next_obs[:, :obs_len - 1]
+
         obs = self.encoder(obs)
         with torch.no_grad():
             next_obs = self.encoder(next_obs)

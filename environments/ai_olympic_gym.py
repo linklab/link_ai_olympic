@@ -142,14 +142,18 @@ class AiOlympicGym(gym.Env):
                 "our_energy": self.entire_obs[self.our_team_idx]["energy"]
             }
 
+        # Get and reshape the global state
+        state = self.get_state()
+        state = state + [0] * (1600 - 194)
+        state = np.array(state)
+        state = state.reshape(1, 40, 40)
+        our_obs = np.concatenate((our_obs, state), axis=0)
+
         if our_obs.dtype != 'float32':
             our_obs = our_obs.astype(np.float32)
 
         # return our_obs, info
         return dm_env.restart(observation=our_obs)
-
-    def get_state(self):
-        return self.game.get_state()
 
     def step(self, action) -> dm_env.TimeStep:
         self.num_steps += 1
@@ -177,6 +181,14 @@ class AiOlympicGym(gym.Env):
             our_obs = self.entire_obs[self.our_team_idx]['agent_obs']
             idx_features = np.full((40, 40), self.game.selected_game_idx_pool[self.game.current_game_count])
             our_obs = np.stack((our_obs, idx_features), axis=0)
+
+        # Get and reshape the global state
+        state = self.get_state()
+        state = state + [0] * (1600 - 194)
+        state = np.array(state)
+        state = state.reshape(1, 40, 40)
+        our_obs = np.concatenate((our_obs, state), axis=0)
+
         if our_obs.dtype != 'float32':
             our_obs = our_obs.astype(np.float32)
 
@@ -209,7 +221,7 @@ class AiOlympicGym(gym.Env):
         }
         truncated = False
 
-        if our_obs.shape != (self.obs_channel_num, 40, 40):
+        if our_obs.shape != (self.obs_channel_num + 1, 40, 40):
             our_obs = np.zeros(shape=(self.obs_channel_num, 40, 40), dtype=np.float32)
 
         if terminated:
@@ -217,6 +229,9 @@ class AiOlympicGym(gym.Env):
         else:
             return dm_env.transition(reward=our_reward, observation=our_obs)
         # return our_obs, our_reward, terminated, truncated, info
+
+    def get_state(self):
+        return self.game.get_state()
 
     def render(self):
         self.game.render()
@@ -243,7 +258,7 @@ class AiOlympicGym(gym.Env):
     def observation_spec(self) -> specs.BoundedArray:
         """Returns the observation spec."""
         return specs.BoundedArray(
-            shape=(self.obs_channel_num, 40, 40),
+            shape=(self.obs_channel_num + 1, 40, 40),
             dtype=np.float32,
             name="observation",
             minimum=np.inf,

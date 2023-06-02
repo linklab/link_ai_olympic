@@ -160,7 +160,7 @@ class AI_Olympics:
         for i, a in enumerate(agents_pos):
             agent[i] = a
         full_state = agents_pos + state_flattened
-        print("full_state: ", len(full_state))
+
         return full_state
 
     def step(self, action_list):
