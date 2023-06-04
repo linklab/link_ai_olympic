@@ -349,6 +349,8 @@ class DrQV2Agent:
         return metrics
 
     def update_auto_encoder(self, next_obs, step):
+        metrics = dict()
+
         bs = next_obs.shape[0]
         obs_len = next_obs.shape[1]
         state = next_obs[:, -1:]
@@ -367,9 +369,13 @@ class DrQV2Agent:
 
         intrinsic_rewards *= 0.005
 
+        if self.use_tb:
+            metrics['intrinsic_rewards'] = intrinsic_rewards.mean().item()
+            metrics['auto_encoder_loss'] = loss.item()
+
         # print("loss: ", loss.item())
 
-        return intrinsic_rewards
+        return intrinsic_rewards, metrics
 
     def update(self, replay_iter, step):
         metrics = dict()
@@ -382,9 +388,12 @@ class DrQV2Agent:
             batch, self.device)
 
         # update autoencoder
-        intrinsic_reward = self.update_auto_encoder(next_obs, step)
+        intrinsic_reward, ae_metrics = self.update_auto_encoder(next_obs, step)
         intrinsic_reward = intrinsic_reward.unsqueeze(1)
         reward += intrinsic_reward.detach()
+
+        # update autoencoder metrics
+        metrics.update(ae_metrics)
 
         # augment
         obs = self.aug(obs.float())
