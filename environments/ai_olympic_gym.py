@@ -222,7 +222,7 @@ class AiOlympicGym(gym.Env):
         truncated = False
 
         if our_obs.shape != (self.obs_channel_num + 1, 40, 40):
-            our_obs = np.zeros(shape=(self.obs_channel_num, 40, 40), dtype=np.float32)
+            our_obs = np.zeros(shape=(self.obs_channel_num + 1, 40, 40), dtype=np.float32)
 
         if terminated:
             return dm_env.termination(reward=our_reward, observation=our_obs)

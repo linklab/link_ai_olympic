@@ -82,9 +82,9 @@ class AI_Olympics:
     def get_state(self):
         state = []
         # wall, cross, arc
-        state.append([[0.0 for _ in range(7)] for w in range(12)])
-        state.append([[0.0 for _ in range(6)] for w in range(17)])
-        state.append([[0.0 for _ in range(7)] for w in range(10)])
+        state.append([[0.0 for _ in range(7)] for w in range(50)])
+        state.append([[0.0 for _ in range(6)] for w in range(50)])
+        state.append([[0.0 for _ in range(7)] for w in range(50)])
 
         agent_pos_max = 1100
         wall_pos_max = 1100

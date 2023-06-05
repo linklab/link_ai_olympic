@@ -253,7 +253,7 @@ class DrQV2Agent:
                                     feature_dim, hidden_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
         self.auto_encoder = AutoEncoder(obs_shape).to(device)
-        self.state_encoder = StateEncoder([2, 40, 40]).to(device)
+        self.state_encoder = StateEncoder([1, 40, 40]).to(device)
 
         # MSE loss
         self.mse_loss = nn.MSELoss(size_average=None, reduce=None, reduction='none')
@@ -285,10 +285,15 @@ class DrQV2Agent:
 
         obs = obs[:obs_len - 1]
         obs = torch.as_tensor(obs, device=self.device)
-        state_encoder = self.state_encoder(obs)
+        state_encoding = self.state_encoder(obs)
         # print("obs_shape: ", obs.shape)
-        # print("state encoder: ", state_encoder.shape)
-        obs = torch.cat([obs, state_encoder[:-1]], dim=0)
+        # print("state encoder: ", state_encoding.shape)
+        if state_encoding.shape[0] > 1:
+            obs = torch.cat([obs, state_encoding[:-1]], dim=0)
+        else:
+            obs = torch.cat([obs, state_encoding], dim=0)
+        # obs = torch.cat([obs, state_encoding[:-1]], dim=0)
+        # obs = torch.cat([obs, state_encoding], dim=0)
         obs = self.encoder(obs.unsqueeze(0))
         stddev = utils.schedule(self.stddev_schedule, step)
         dist = self.actor(obs, stddev)
@@ -386,7 +391,8 @@ class DrQV2Agent:
         metrics = dict()
 
         state_encoding = self.state_encoder(obs)
-        state_encoding = state_encoding[:, :-1]
+        if state_encoding.shape[1] > 1:
+            state_encoding = state_encoding[:, :-1]
         loss = self.mse_loss(state_encoding, state).mean(1)
         loss = loss.mean()
 
@@ -437,10 +443,17 @@ class DrQV2Agent:
         # update state encoder
         metrics.update(self.update_state_encoder(obs, state))
 
-        obs = torch.cat([obs, state_encoding[:, :-1]], dim=1)
+        if state_encoding.shape[1] > 1:
+            obs = torch.cat([obs, state_encoding[:, :-1]], dim=1)
+        else:
+            obs = torch.cat([obs, state_encoding], dim=1)
         obs = self.encoder(obs)
         with torch.no_grad():
-            next_obs = torch.cat([next_obs, next_state_encoding[:, :-1]], dim=1)
+            if next_state_encoding.shape[1] > 1:
+                next_obs = torch.cat([next_obs, next_state_encoding[:, :-1]], dim=1)
+            else:
+                next_obs = torch.cat([next_obs, next_state_encoding], dim=1)
+
             next_obs = self.encoder(next_obs)
 
         if self.use_tb:
