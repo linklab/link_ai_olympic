@@ -83,8 +83,8 @@ class AI_Olympics:
         state = []
         # wall, cross, arc
         state.append([[0.0 for _ in range(7)] for w in range(12)])
-        state.append([[0.0 for _ in range(6)] for w in range(13)])
-        state.append([[0.0 for _ in range(7)] for w in range(4)])
+        state.append([[0.0 for _ in range(6)] for w in range(17)])
+        state.append([[0.0 for _ in range(7)] for w in range(10)])
 
         agent_pos_max = 1100
         wall_pos_max = 1100
@@ -154,12 +154,13 @@ class AI_Olympics:
                 n_arc += 1
         state_flattened = [y for a in state for x in a for y in x]
 
-        agent = [0.0 for _ in range(6)]
-        agents_pos = [y / agent_pos_max for a in self.agent_pos for y in a]
-        assert max(agents_pos) <= 1.0
-        for i, a in enumerate(agents_pos):
-            agent[i] = a
-        full_state = agents_pos + state_flattened
+        # agents_pos = [y / agent_pos_max for a in self.agent_pos for y in a]
+        # agent = [0.0 for _ in range(len(agents_pos))]
+        # assert max(agents_pos) <= 1.0
+        # for i, a in enumerate(agents_pos):
+        #     agent[i] = a
+        # full_state = agents_pos + state_flattened
+        full_state = state_flattened
 
         return full_state
 

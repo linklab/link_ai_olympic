@@ -144,7 +144,7 @@ class AiOlympicGym(gym.Env):
 
         # Get and reshape the global state
         state = self.get_state()
-        state = state + [0] * (1600 - 194)
+        state = state + [0] * (1600 - len(state))
         state = np.array(state)
         state = state.reshape(1, 40, 40)
         our_obs = np.concatenate((our_obs, state), axis=0)
@@ -184,7 +184,7 @@ class AiOlympicGym(gym.Env):
 
         # Get and reshape the global state
         state = self.get_state()
-        state = state + [0] * (1600 - 194)
+        state = state + [0] * (1600 - len(state))
         state = np.array(state)
         state = state.reshape(1, 40, 40)
         our_obs = np.concatenate((our_obs, state), axis=0)
